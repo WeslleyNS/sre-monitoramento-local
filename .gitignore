@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# OS / Editor
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Env files (se você criar depois)
+.env
+
+# Grafana local data (se for persistir)
+grafana/data/
+prometheus/data/
