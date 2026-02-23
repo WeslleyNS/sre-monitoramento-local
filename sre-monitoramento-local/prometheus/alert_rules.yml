@@ -1,0 +1,21 @@
+groups:
+  - name: sre_app_alerts
+    interval: 15s
+    rules:
+      - alert: AppDown
+        expr: up{job="sre_app"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "App SRE está DOWN"
+          description: "A aplicação {{ $labels.job }} está fora do ar há mais de 30 segundos."
+
+      - alert: HighRequestRate
+        expr: rate(app_requests_total[1m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de requisições alta"
+          description: "A aplicação está recebendo mais de 5 req/s."

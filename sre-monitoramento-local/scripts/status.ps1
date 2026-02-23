@@ -22,6 +22,7 @@ docker compose ps
 Write-Host "`n=== Health dos Endpoints ===" -ForegroundColor Yellow
 Check-Service "sre_app" "App" "http://localhost:8080/health"
 Check-Service "sre_victoriametrics" "VictoriaMetrics" "http://localhost:8428/health"
+Check-Service "sre_vmalert" "VMAlert" "http://localhost:8880/health"
 Check-Service "sre_grafana" "Grafana" "http://localhost:3000/api/health"
 Check-Service "sre_alertmanager" "Alertmanager" "http://localhost:9093/-/healthy"
 

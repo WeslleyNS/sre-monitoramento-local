@@ -18,7 +18,6 @@ services:
       - "8428:8428"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - victoria_data:/victoria-metrics-data
     command:
       - "-promscrape.config=/etc/prometheus/prometheus.yml"
@@ -28,6 +27,29 @@ services:
       - app
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8428/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  vmalert:
+    image: victoriametrics/vmalert:v1.93.0
+    container_name: sre_vmalert
+    ports:
+      - "8880:8880"
+    volumes:
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    command:
+      - "-datasource.url=http://victoriametrics:8428"
+      - "-remoteRead.url=http://victoriametrics:8428"
+      - "-remoteWrite.url=http://victoriametrics:8428"
+      - "-notifier.url=http://alertmanager:9093"
+      - "-rule=/etc/prometheus/alert_rules.yml"
+      - "-evaluationInterval=15s"
+    depends_on:
+      - victoriametrics
+      - alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8880/health"]
       interval: 30s
       timeout: 5s
       retries: 3
