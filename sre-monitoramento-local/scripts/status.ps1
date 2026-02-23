@@ -1,29 +1,29 @@
-Write-Host "=== Status dos Containers ===" -ForegroundColor Cyan
+function Check-Service {
+    param($container, $name, $url)
+    $status = docker inspect -f '{{.State.Status}}' $container 2>$null
+    if ($status -eq "running") {
+        try {
+            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -eq 200) {
+                Write-Host "[OK] ${name}: " -NoNewline -ForegroundColor Green
+                Write-Host "$url - Status: $($response.StatusCode)" -ForegroundColor Cyan
+            }
+        } catch {
+            Write-Host "[ERRO] ${name}: $url não respondeu" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "[ERRO] ${name}: container não está rodando" -ForegroundColor Red
+    }
+}
+
+Write-Host "`n=== Status dos Containers ===" -ForegroundColor Yellow
 docker compose ps
+
+Write-Host "`n=== Health dos Endpoints ===" -ForegroundColor Yellow
+Check-Service "sre_app" "App" "http://localhost:8080/health"
+Check-Service "sre_victoriametrics" "VictoriaMetrics" "http://localhost:8428/health"
+Check-Service "sre_vmalert" "VMAlert" "http://localhost:8880/health"
+Check-Service "sre_grafana" "Grafana" "http://localhost:3000/api/health"
+Check-Service "sre_alertmanager" "Alertmanager" "http://localhost:9093/-/healthy"
+
 Write-Host ""
-
-Write-Host "=== Health dos Endpoints ===" -ForegroundColor Cyan
-
-# App
-try {
-    $app = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8080/health
-    Write-Host "[OK] App:        http://localhost:8080/health - Status: $($app.StatusCode)" -ForegroundColor Green
-} catch {
-    Write-Host "[FAIL] App:      http://localhost:8080/health - Erro" -ForegroundColor Red
-}
-
-# Prometheus
-try {
-    $prom = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:9090/-/healthy
-    Write-Host "[OK] Prometheus: http://localhost:9090/-/healthy - Status: $($prom.StatusCode)" -ForegroundColor Green
-} catch {
-    Write-Host "[FAIL] Prometheus: http://localhost:9090/-/healthy - Erro" -ForegroundColor Red
-}
-
-# Grafana
-try {
-    $grafana = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:3000/api/health
-    Write-Host "[OK] Grafana:    http://localhost:3000/api/health - Status: $($grafana.StatusCode)" -ForegroundColor Green
-} catch {
-    Write-Host "[FAIL] Grafana:  http://localhost:3000/api/health - Erro" -ForegroundColor Red
-}

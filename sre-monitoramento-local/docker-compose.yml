@@ -5,25 +5,51 @@ services:
     ports:
       - "8080:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
 
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    container_name: sre_prometheus
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.93.0
+    container_name: sre_victoriametrics
     ports:
-      - "9090:9090"
+      - "8428:8428"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - victoria_data:/victoria-metrics-data
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "-promscrape.config=/etc/prometheus/prometheus.yml"
+      - "-storageDataPath=/victoria-metrics-data"
+      - "-retentionPeriod=30d"
     depends_on:
       - app
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8428/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  vmalert:
+    image: victoriametrics/vmalert:v1.93.0
+    container_name: sre_vmalert
+    ports:
+      - "8880:8880"
+    volumes:
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    command:
+      - "-datasource.url=http://victoriametrics:8428"
+      - "-remoteRead.url=http://victoriametrics:8428"
+      - "-remoteWrite.url=http://victoriametrics:8428"
+      - "-notifier.url=http://alertmanager:9093"
+      - "-rule=/etc/prometheus/alert_rules.yml"
+      - "-evaluationInterval=15s"
+    depends_on:
+      - victoriametrics
+      - alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8880/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -36,10 +62,35 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
-      - prometheus
+      - victoriametrics
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: sre_alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    depends_on:
+      - victoriametrics
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  grafana_data:
+  victoria_data:
