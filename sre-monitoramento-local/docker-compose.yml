@@ -45,6 +45,7 @@ services:
       - "-notifier.url=http://alertmanager:9093"
       - "-rule=/etc/prometheus/alert_rules.yml"
       - "-evaluationInterval=15s"
+      - "-httpListenAddr=:8880"
     depends_on:
       - victoriametrics
       - alertmanager

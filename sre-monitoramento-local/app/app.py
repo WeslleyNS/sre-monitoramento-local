@@ -4,6 +4,7 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 
 app = Flask(__name__)
 
+# Métricas
 REQUESTS_TOTAL = Counter(
     "app_requests_total",
     "Total de requests HTTP",
@@ -19,7 +20,7 @@ REQUEST_LATENCY_SECONDS = Histogram(
 START_TIME = time.time()
 
 
-@app.get("/")
+@app.route("/")
 def home():
     start = time.time()
     status = 200
@@ -30,16 +31,20 @@ def home():
         REQUEST_LATENCY_SECONDS.labels("/").observe(time.time() - start)
 
 
-@app.get("/health")
+@app.route("/health")
 def health():
     return {"status": "UP"}
 
 
-@app.get("/metrics")
+@app.route("/metrics")
 def metrics():
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 
-@app.get("/uptime")
+@app.route("/uptime")
 def uptime():
     return {"uptime_seconds": int(time.time() - START_TIME)}
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
